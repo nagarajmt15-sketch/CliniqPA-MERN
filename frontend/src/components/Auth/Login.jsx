@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import emailjs from '@emailjs/browser';
 
-const API = 'http://localhost:5000';
+const API_URL = 'https://cliniqpa-mern.onrender.com';
 
 // EmailJS config — replace with your actual keys from emailjs.com
 const EMAILJS_SERVICE_ID  = process.env.REACT_APP_EMAILJS_SERVICE_ID  || 'service_REPLACE';
@@ -61,7 +61,7 @@ export default function Login() {
     if (regPass !== regPass2) { setError('Passwords do not match.'); return; }
     setLoading(true);
     try {
-      var res = await fetch(API + '/api/auth/register', {
+      var res = await fetch(API_URL + '/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: regName.trim(), email: regEmail.trim().toLowerCase(), password: regPass })
@@ -85,7 +85,7 @@ export default function Login() {
     setLoading(true);
     try {
       // 1. Ask backend to generate OTP and verify email exists
-      var res = await fetch(API + '/api/auth/forgot-password', {
+      var res = await fetch(API_URL + '/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail.trim().toLowerCase() })
@@ -142,7 +142,7 @@ export default function Login() {
     setLoading(true);
     try {
       // Verify OTP with backend BEFORE going to next step
-      var res = await fetch(API + '/api/auth/verify-otp', {
+      var res = await fetch(API_URL + '/api/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -179,7 +179,7 @@ export default function Login() {
     if (newPass !== newPass2)    { setError('Passwords do not match.'); return; }
     setLoading(true);
     try {
-      var res = await fetch(API + '/api/auth/reset-password', {
+      var res = await fetch(API_URL + '/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

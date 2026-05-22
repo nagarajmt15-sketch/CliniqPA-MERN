@@ -7,7 +7,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
 
 const AuthContext = createContext();
-const API = 'http://localhost:5000';
+const API_URL = 'https://cliniqpa-mern.onrender.com';
 
 export function AuthProvider({ children }) {
   const [user,    setUser]    = useState(null);
@@ -30,14 +30,14 @@ export function AuthProvider({ children }) {
 
   // ── LOGIN ─────────────────────────────────────────────────
   async function login(email, password) {
-    const res = await axios.post(API + '/api/auth/login', { email, password });
+    const res = await axios.post(API_URL + '/api/auth/login', { email, password });
     _setUser(res.data);
     return res.data;
   }
 
   // ── REGISTER → auto login (no separate email verify step) ─
   async function register(name, email, password) {
-    const res = await axios.post(API + '/api/auth/register', { name, email, password });
+    const res = await axios.post(API_URL + '/api/auth/register', { name, email, password });
     // Register returns user + token → auto login
     _setUser(res.data);
     return res.data;
