@@ -11,7 +11,9 @@ const jwt      = require('jsonwebtoken');
 dotenv.config();
 
 const app = express();
-app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
+
+// 🔥 FIXED: Allowed all origins to fix Vercel Frontend to Render Backend connection issue
+app.use(cors());
 app.use(express.json());
 
 // ── MongoDB Connect ──────────────────────────────────────────
@@ -175,10 +177,10 @@ app.post('/api/progress/save', protect, async function(req, res) {
     if (!user) return res.status(404).json({ message: 'User not found.' });
 
     user.caseHistory.push({
-      caseId:     req.body.caseId,
-      caseTitle:  req.body.caseTitle,
-      score:      req.body.score,
-      totalSteps: req.body.totalSteps
+      caseId:      req.body.caseId,
+      caseTitle:   req.body.caseTitle,
+      score:       req.body.score,
+      totalSteps:  req.body.totalSteps
     });
 
     user.progress.casesCompleted += 1;
@@ -239,98 +241,67 @@ app.get('/', function(req, res) {
   });
 });
 
-// ════════════════════════════════════════════════════════════════
-// PART 1: backend/server.js
-// Add these 2 routes to your existing server.js
-// (Add before the PORT/listen line at the bottom)
-// ════════════════════════════════════════════════════════════════
-
-// Temporary OTP store (in production use Redis or DB)
+// Temporary OTP store
 var otpStore = {};
 
 // ── SEND OTP (Forgot Password Step 1) ────────────────────────
-// POST /api/auth/forgot-password
-// Frontend sends { email }
-// Backend checks email exists, stores OTP, returns OTP (frontend sends via EmailJS)
 app.post('/api/auth/forgot-password', async function(req, res) {
   var email = (req.body.email || '').trim().toLowerCase();
-  console.log('📧 Forgot password request for:', email); // DEBUG
+  console.log('📧 Forgot password request for:', email);
   if (!email) return res.status(400).json({ message: 'Email is required.' });
 
   try {
     var user = await User.findOne({ email: email });
     if (!user) {
-      console.log('❌ User not found:', email); // DEBUG
       return res.status(404).json({ message: 'No account found with this email.' });
     }
 
-    // Generate 6-digit OTP
     var otp = Math.floor(100000 + Math.random() * 900000).toString();
-    console.log('✅ Generated OTP for', email, ':', otp); // DEBUG
+    console.log('✅ Generated OTP for', email, ':', otp);
 
-    // Store OTP with 10 minute expiry
     otpStore[email] = {
       otp:     otp,
-      expires: Date.now() + 10 * 60 * 1000 // 10 minutes
+      expires: Date.now() + 10 * 60 * 1000
     };
 
-    // Return OTP to frontend (frontend will send via EmailJS)
     res.json({
       message: 'OTP generated',
-      otp:     otp,        // frontend uses this to send email
-      name:    user.name   // for personalized email
+      otp:     otp,
+      name:    user.name
     });
 
   } catch (err) {
-    console.error('❌ Forgot password error:', err); // DEBUG
     res.status(500).json({ message: 'Server error.' });
   }
 });
 
-// ── VERIFY OTP (New endpoint for Step 2) ─────────────────────
-// POST /api/auth/verify-otp
-// Frontend sends { email, otp }
-// Backend verifies OTP is correct before allowing password reset
+// ── VERIFY OTP (Step 2) ─────────────────────────────────────
 app.post('/api/auth/verify-otp', async function(req, res) {
   var email = (req.body.email || '').trim().toLowerCase();
   var otp   = (req.body.otp   || '').trim();
-
-  console.log('🔍 Verify OTP request - Email:', email, 'OTP:', otp); // DEBUG
 
   if (!email || !otp) {
     return res.status(400).json({ message: 'Email and OTP are required.' });
   }
 
-  // Check OTP exists
   var stored = otpStore[email];
-  console.log('📦 Stored OTP data:', stored); // DEBUG
-  
   if (!stored) {
-    console.log('❌ No OTP found in store for:', email); // DEBUG
     return res.status(400).json({ message: 'OTP not found. Please request a new one.' });
   }
 
-  // Check OTP expired
   if (Date.now() > stored.expires) {
-    console.log('⏰ OTP expired for:', email); // DEBUG
     delete otpStore[email];
     return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
   }
 
-  // Check OTP matches
   if (stored.otp !== otp) {
-    console.log('❌ OTP mismatch! Expected:', stored.otp, 'Got:', otp); // DEBUG
     return res.status(400).json({ message: 'Invalid OTP. Please try again.' });
   }
 
-  // OTP is valid!
-  console.log('✅ OTP verified successfully for:', email); // DEBUG
   res.json({ message: 'OTP verified successfully!' });
 });
 
 // ── VERIFY OTP + RESET PASSWORD (Step 2+3) ───────────────────
-// POST /api/auth/reset-password
-// Frontend sends { email, otp, newPassword }
 app.post('/api/auth/reset-password', async function(req, res) {
   var email       = (req.body.email       || '').trim().toLowerCase();
   var otp         = (req.body.otp         || '').trim();
@@ -343,42 +314,34 @@ app.post('/api/auth/reset-password', async function(req, res) {
     return res.status(400).json({ message: 'Password must be at least 6 characters.' });
   }
 
-  // Check OTP exists
   var stored = otpStore[email];
   if (!stored) {
     return res.status(400).json({ message: 'OTP expired or not found. Please request a new one.' });
   }
 
-  // Check OTP expired
   if (Date.now() > stored.expires) {
     delete otpStore[email];
     return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
   }
 
-  // Check OTP matches
   if (stored.otp !== otp) {
     return res.status(400).json({ message: 'Invalid OTP. Please try again.' });
   }
 
   try {
-    // Find user and update password
     var user = await User.findOne({ email: email });
     if (!user) return res.status(404).json({ message: 'User not found.' });
 
-    // Set new password (pre-save hook will hash it)
     user.password = newPassword;
-    await user.save(); // triggers bcrypt hash
+    await user.save();
 
-    // Clear OTP
     delete otpStore[email];
-
     res.json({ message: 'Password reset successfully! Please sign in.' });
 
   } catch (err) {
     res.status(500).json({ message: 'Server error: ' + err.message });
   }
 });
-
 
 // ── START ─────────────────────────────────────────────────────
 var PORT = process.env.PORT || 5000;
