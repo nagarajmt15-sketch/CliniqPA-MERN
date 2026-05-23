@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import CASES from '../../data/cases';
 
 function CaseRunner() {
@@ -9,13 +9,12 @@ function CaseRunner() {
   const [selected, setSelected] = useState(null);
   const [showResult, setShowResult] = useState(false);
 
-  // 🔥 Database-la progress save panna intha function udhavum mapla
+  // 🎯 Database-la progress save panna smooth function mapla
   async function saveProgressToDB(finalScore) {
     try {
-      const token = localStorage.getItem('token'); // user login token
+      const token = localStorage.getItem('token'); 
       if (!token) return;
 
-      // Unga Render API setup poruthu base URL mathikonga (e.g., https://cliniqpa-mern.onrender.com)
       const API_URL = window.location.hostname === 'localhost' 
         ? 'http://localhost:5000' 
         : 'https://cliniqpa-mern.onrender.com';
@@ -58,10 +57,14 @@ function CaseRunner() {
   }
 
   function nextStep() {
+    // 💡 BUG FIXED: 'i' undefined prachana-va handle panni safe check potachu mapla
     if (step + 1 >= activeCase.steps.length) {
       setShowResult(true);
-      // 🔥 Case mudiyumpothu correct scores-ah database-ku anupurom
-      const finalScore = i === activeCase.steps[step].correct ? correct + 1 : correct;
+      
+      // Correct-ah current step selected correct-ah nu check panni dynamic sync
+      const isCurrentCorrect = selected === activeCase.steps[step].correct;
+      const finalScore = isCurrentCorrect ? correct + 1 : correct;
+      
       saveProgressToDB(finalScore);
     } else {
       setStep(function(p) { return p + 1; });
@@ -81,23 +84,27 @@ function CaseRunner() {
         React.createElement('p', { style: s.sub }, 'Step-by-step clinical decision making')
       ),
       React.createElement('div', { style: s.grid },
-        // 👍 FIXED: Optional Chaining implemented perfectly mapla!
-        CASES?.map(function(c) {
-          return React.createElement('div', { key: c.id, style: s.card },
-            React.createElement('div', { style: Object.assign({}, s.banner, { background: c.color }) }),
-            React.createElement('div', { style: s.cardBody },
-              React.createElement('div', { style: s.diff }, c.diff + ' - ' + c.steps.length + ' Steps'),
-              React.createElement('div', { style: s.cardTitle }, c.title),
-              React.createElement('div', { style: s.cardSub }, c.sub),
-              React.createElement('div', { style: s.tags },
-                c.tags?.map(function(t) {
-                  return React.createElement('span', { key: t, style: s.tag }, t);
-                })
-              ),
-              React.createElement('button', { style: s.startBtn, onClick: function() { startCase(c); } }, 'Start Case')
-            )
-          );
-        })
+        // Safe evaluation array wrapper to prevent any crash!
+        CASES && CASES.length > 0 ? (
+          CASES.map(function(c) {
+            return React.createElement('div', { key: c.id, style: s.card },
+              React.createElement('div', { style: { ...s.banner, background: c.color } }),
+              React.createElement('div', { style: s.cardBody },
+                React.createElement('div', { style: s.diff }, (c.diff || 'Standard') + ' - ' + (c.steps?.length || 0) + ' Steps'),
+                React.createElement('div', { style: s.cardTitle }, c.title),
+                React.createElement('div', { style: s.cardSub }, c.sub),
+                React.createElement('div', { style: s.tags },
+                  c.tags?.map(function(t) {
+                    return React.createElement('span', { key: t, style: s.tag }, t);
+                  })
+                ),
+                React.createElement('button', { style: s.startBtn, onClick: function() { startCase(c); } }, 'Start Case')
+              )
+            );
+          })
+        ) : (
+          React.createElement('p', { style: { color: '#5a7a9a', gridColumn: '1/-1', textAlign: 'center' } }, 'No cases found or dataset loading...')
+        )
       )
     );
   }
@@ -130,7 +137,7 @@ function CaseRunner() {
     ),
     React.createElement('div', { style: s.stepBar },
       activeCase.steps?.map(function(_, i) {
-        return React.createElement('div', { key: i, style: Object.assign({}, s.stepDot, i < step ? s.dotDone : i === step ? s.dotCur : {}) });
+        return React.createElement('div', { key: i, style: { ...s.stepDot, ...(i < step ? s.dotDone : i === step ? s.dotCur : {}) } });
       })
     ),
     React.createElement('div', { style: s.vitalsBox },
@@ -138,7 +145,7 @@ function CaseRunner() {
       React.createElement('div', { style: s.vitalsGrid },
         currentStep.vitals?.map(function(v, i) {
           return React.createElement('div', { key: i, style: s.vit },
-            React.createElement('div', { style: Object.assign({}, s.vitVal, v.c === 'abn' ? s.vitAbn : v.c === 'warn' ? s.vitWarn : s.vitOk) }, v.v),
+            React.createElement('div', { style: { ...s.vitVal, ...(v.c === 'abn' ? s.vitAbn : v.c === 'warn' ? s.vitWarn : s.vitOk) } }, v.v),
             React.createElement('div', { style: s.vitName }, v.n)
           );
         })
@@ -148,17 +155,17 @@ function CaseRunner() {
     React.createElement('div', { style: s.optsLabel }, 'What will you do next?'),
     React.createElement('div', { style: s.optsList },
       currentStep.opts?.map(function(o, i) {
-        var btnStyle = Object.assign({}, s.optBtn);
+        var btnStyle = { ...s.optBtn };
         if (answered) {
-          if (i === currentStep.correct) btnStyle = Object.assign({}, s.optBtn, s.optCorrect);
-          else if (i === selected) btnStyle = Object.assign({}, s.optBtn, s.optWrong);
+          if (i === currentStep.correct) btnStyle = { ...s.optBtn, ...s.optCorrect };
+          else if (i === selected) btnStyle = { ...s.optBtn, ...s.optWrong };
         }
         return React.createElement('button', { key: i, style: btnStyle, disabled: answered, onClick: function() { pickAnswer(i); } },
           String.fromCharCode(65 + i) + '. ' + o
         );
       })
     ),
-    answered && React.createElement('div', { style: Object.assign({}, s.fbBox, selected === currentStep.correct ? s.fbOk : s.fbBad) },
+    answered && React.createElement('div', { style: { ...s.fbBox, ...(selected === currentStep.correct ? s.fbOk : s.fbBad) } },
       React.createElement('div', { style: s.fbTitle }, selected === currentStep.correct ? 'Correct!' : 'Not ideal.'),
       React.createElement('div', { style: s.fbExp }, currentStep.exp)
     ),
