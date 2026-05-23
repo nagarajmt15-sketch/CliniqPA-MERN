@@ -157,12 +157,11 @@ function CaseRunner() {
       )
     ),
     
-    // 💡 Scenario Check (sc or scenario fallback)
+    // Scenario Check
     React.createElement('div', { style: s.scenarioBox }, currentStep.sc || currentStep.scenario || 'No scenario details provided.'),
     
     React.createElement('div', { style: s.optsLabel }, 'What will you do next?'),
     React.createElement('div', { style: s.optsList },
-      // 💡 Options Check (opts or options fallback)
       (currentStep.opts || currentStep.options || [])?.map(function(o, i) {
         var btnStyle = { ...s.optBtn };
         var correctIndex = currentStep.correct !== undefined ? currentStep.correct : currentStep.correctAnswer;
@@ -171,13 +170,22 @@ function CaseRunner() {
           if (i === correctIndex) btnStyle = { ...s.optBtn, ...s.optCorrect };
           else if (i === selected) btnStyle = { ...s.optBtn, ...s.optWrong };
         }
+
+        // 💡 [object Object] BUG FIX: Safely parse text from object if necessary
+        var displayOptionText = '';
+        if (typeof o === 'object' && o !== null) {
+          displayOptionText = o.text || o.option || o.optionText || o.title || JSON.stringify(o);
+        } else {
+          displayOptionText = o;
+        }
+
         return React.createElement('button', { key: i, style: btnStyle, disabled: answered, onClick: function() { pickAnswer(i); } },
-          String.fromCharCode(65 + i) + '. ' + o
+          String.fromCharCode(65 + i) + '. ' + displayOptionText
         );
       })
     ),
     
-    // 💡 Explanation Check (exp or explanation fallback)
+    // Explanation Check
     answered && React.createElement('div', { style: { ...s.fbBox, ...(selected === (currentStep.correct !== undefined ? currentStep.correct : currentStep.correctAnswer) ? s.fbOk : s.fbBad) } },
       React.createElement('div', { style: s.fbTitle }, selected === (currentStep.correct !== undefined ? currentStep.correct : currentStep.correctAnswer) ? 'Correct!' : 'Not ideal.'),
       React.createElement('div', { style: s.fbExp }, currentStep.exp || currentStep.explanation || '')
