@@ -9,7 +9,7 @@ function CaseRunner() {
   const [selected, setSelected] = useState(null);
   const [showResult, setShowResult] = useState(false);
 
-  // 🎯 Database-la progress save panna smooth function mapla
+  // 🎯 Database progress cloud synchronization logic
   async function saveProgressToDB(finalScore) {
     try {
       const token = localStorage.getItem('token'); 
@@ -51,20 +51,23 @@ function CaseRunner() {
     if (answered) return;
     setAnswered(true);
     setSelected(i);
-    if (i === activeCase.steps[step].correct) {
+    
+    var currentStep = activeCase.steps[step];
+    var correctIndex = currentStep.correct !== undefined ? currentStep.correct : currentStep.correctAnswer;
+    
+    if (i === correctIndex) {
       setCorrect(function(p) { return p + 1; });
     }
   }
 
   function nextStep() {
-    // 💡 BUG FIXED: 'i' undefined prachana-va handle panni safe check potachu mapla
+    var currentStep = activeCase.steps[step];
+    var correctIndex = currentStep.correct !== undefined ? currentStep.correct : currentStep.correctAnswer;
+
     if (step + 1 >= activeCase.steps.length) {
       setShowResult(true);
-      
-      // Correct-ah current step selected correct-ah nu check panni dynamic sync
-      const isCurrentCorrect = selected === activeCase.steps[step].correct;
+      const isCurrentCorrect = selected === correctIndex;
       const finalScore = isCurrentCorrect ? correct + 1 : correct;
-      
       saveProgressToDB(finalScore);
     } else {
       setStep(function(p) { return p + 1; });
@@ -77,6 +80,7 @@ function CaseRunner() {
     startCase(activeCase);
   }
 
+  // --- RENDERING ROUTE 1: ALL CASES GRID ---
   if (!activeCase) {
     return React.createElement('div', { style: s.wrap },
       React.createElement('div', { style: s.hdr },
@@ -84,11 +88,10 @@ function CaseRunner() {
         React.createElement('p', { style: s.sub }, 'Step-by-step clinical decision making')
       ),
       React.createElement('div', { style: s.grid },
-        // Safe evaluation array wrapper to prevent any crash!
         CASES && CASES.length > 0 ? (
           CASES.map(function(c) {
             return React.createElement('div', { key: c.id, style: s.card },
-              React.createElement('div', { style: { ...s.banner, background: c.color } }),
+              React.createElement('div', { style: { ...s.banner, background: c.color || '#00d4ff' } }),
               React.createElement('div', { style: s.cardBody },
                 React.createElement('div', { style: s.diff }, (c.diff || 'Standard') + ' - ' + (c.steps?.length || 0) + ' Steps'),
                 React.createElement('div', { style: s.cardTitle }, c.title),
@@ -109,6 +112,7 @@ function CaseRunner() {
     );
   }
 
+  // --- RENDERING ROUTE 2: SCORE SHEET RESULT ---
   if (showResult) {
     var pct = Math.round((correct / activeCase.steps.length) * 100);
     return React.createElement('div', { style: s.wrap },
@@ -125,6 +129,7 @@ function CaseRunner() {
     );
   }
 
+  // --- RENDERING ROUTE 3: LIVE ACTIVE CASE SYSTEM ---
   var currentStep = activeCase.steps[step];
 
   return React.createElement('div', { style: s.wrap },
@@ -132,7 +137,7 @@ function CaseRunner() {
       React.createElement('button', { style: s.backBtn, onClick: function() { setActiveCase(null); } }, 'Back'),
       React.createElement('div', null,
         React.createElement('div', { style: s.caseTitle }, activeCase.title),
-        React.createElement('div', { style: s.caseSub }, activeCase.sub + '  -  Step ' + (step + 1) + ' of ' + activeCase.steps.length)
+        React.createElement('div', { style: s.caseSub }, (activeCase.sub || activeCase.diff || 'Standard') + '  -  Step ' + (step + 1) + ' of ' + activeCase.steps.length)
       )
     ),
     React.createElement('div', { style: s.stepBar },
@@ -151,13 +156,19 @@ function CaseRunner() {
         })
       )
     ),
-    React.createElement('div', { style: s.scenarioBox }, currentStep.sc),
+    
+    // 💡 Scenario Check (sc or scenario fallback)
+    React.createElement('div', { style: s.scenarioBox }, currentStep.sc || currentStep.scenario || 'No scenario details provided.'),
+    
     React.createElement('div', { style: s.optsLabel }, 'What will you do next?'),
     React.createElement('div', { style: s.optsList },
-      currentStep.opts?.map(function(o, i) {
+      // 💡 Options Check (opts or options fallback)
+      (currentStep.opts || currentStep.options || [])?.map(function(o, i) {
         var btnStyle = { ...s.optBtn };
+        var correctIndex = currentStep.correct !== undefined ? currentStep.correct : currentStep.correctAnswer;
+        
         if (answered) {
-          if (i === currentStep.correct) btnStyle = { ...s.optBtn, ...s.optCorrect };
+          if (i === correctIndex) btnStyle = { ...s.optBtn, ...s.optCorrect };
           else if (i === selected) btnStyle = { ...s.optBtn, ...s.optWrong };
         }
         return React.createElement('button', { key: i, style: btnStyle, disabled: answered, onClick: function() { pickAnswer(i); } },
@@ -165,9 +176,11 @@ function CaseRunner() {
         );
       })
     ),
-    answered && React.createElement('div', { style: { ...s.fbBox, ...(selected === currentStep.correct ? s.fbOk : s.fbBad) } },
-      React.createElement('div', { style: s.fbTitle }, selected === currentStep.correct ? 'Correct!' : 'Not ideal.'),
-      React.createElement('div', { style: s.fbExp }, currentStep.exp)
+    
+    // 💡 Explanation Check (exp or explanation fallback)
+    answered && React.createElement('div', { style: { ...s.fbBox, ...(selected === (currentStep.correct !== undefined ? currentStep.correct : currentStep.correctAnswer) ? s.fbOk : s.fbBad) } },
+      React.createElement('div', { style: s.fbTitle }, selected === (currentStep.correct !== undefined ? currentStep.correct : currentStep.correctAnswer) ? 'Correct!' : 'Not ideal.'),
+      React.createElement('div', { style: s.fbExp }, currentStep.exp || currentStep.explanation || '')
     ),
     answered && React.createElement('button', { style: s.nextBtn, onClick: nextStep },
       step + 1 >= activeCase.steps.length ? 'See Results' : 'Continue'
@@ -175,6 +188,7 @@ function CaseRunner() {
   );
 }
 
+// Global styles definitions
 var s = {
   wrap:        { padding: '28px 32px', maxWidth: 900, fontFamily: 'Outfit, sans-serif' },
   hdr:         { marginBottom: 28 },
