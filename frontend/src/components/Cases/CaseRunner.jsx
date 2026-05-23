@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import CASES from '../../data/cases';
 
 function CaseRunner() {
@@ -8,6 +8,36 @@ function CaseRunner() {
   const [correct, setCorrect] = useState(0);
   const [selected, setSelected] = useState(null);
   const [showResult, setShowResult] = useState(false);
+
+  // 🔥 Database-la progress save panna intha function udhavum mapla
+  async function saveProgressToDB(finalScore) {
+    try {
+      const token = localStorage.getItem('token'); // user login token
+      if (!token) return;
+
+      // Unga Render API setup poruthu base URL mathikonga (e.g., https://cliniqpa-mern.onrender.com)
+      const API_URL = window.location.hostname === 'localhost' 
+        ? 'http://localhost:5000' 
+        : 'https://cliniqpa-mern.onrender.com';
+
+      await fetch(`${API_URL}/api/progress/save`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          caseId: activeCase.id,
+          caseTitle: activeCase.title,
+          score: finalScore,
+          totalSteps: activeCase.steps.length
+        })
+      });
+      console.log('🎯 Progress saved to cloud DB successfully!');
+    } catch (err) {
+      console.error('Error saving progress:', err.message);
+    }
+  }
 
   function startCase(c) {
     setActiveCase(c);
@@ -30,6 +60,9 @@ function CaseRunner() {
   function nextStep() {
     if (step + 1 >= activeCase.steps.length) {
       setShowResult(true);
+      // 🔥 Case mudiyumpothu correct scores-ah database-ku anupurom
+      const finalScore = i === activeCase.steps[step].correct ? correct + 1 : correct;
+      saveProgressToDB(finalScore);
     } else {
       setStep(function(p) { return p + 1; });
       setAnswered(false);
@@ -48,6 +81,7 @@ function CaseRunner() {
         React.createElement('p', { style: s.sub }, 'Step-by-step clinical decision making')
       ),
       React.createElement('div', { style: s.grid },
+        // 👍 FIXED: Optional Chaining implemented perfectly mapla!
         CASES?.map(function(c) {
           return React.createElement('div', { key: c.id, style: s.card },
             React.createElement('div', { style: Object.assign({}, s.banner, { background: c.color }) }),
@@ -56,7 +90,7 @@ function CaseRunner() {
               React.createElement('div', { style: s.cardTitle }, c.title),
               React.createElement('div', { style: s.cardSub }, c.sub),
               React.createElement('div', { style: s.tags },
-                c.tags.map(function(t) {
+                c.tags?.map(function(t) {
                   return React.createElement('span', { key: t, style: s.tag }, t);
                 })
               ),
@@ -95,14 +129,14 @@ function CaseRunner() {
       )
     ),
     React.createElement('div', { style: s.stepBar },
-      activeCase.steps.map(function(_, i) {
+      activeCase.steps?.map(function(_, i) {
         return React.createElement('div', { key: i, style: Object.assign({}, s.stepDot, i < step ? s.dotDone : i === step ? s.dotCur : {}) });
       })
     ),
     React.createElement('div', { style: s.vitalsBox },
       React.createElement('div', { style: s.vitalsTitle }, 'Patient Vitals'),
       React.createElement('div', { style: s.vitalsGrid },
-        currentStep.vitals.map(function(v, i) {
+        currentStep.vitals?.map(function(v, i) {
           return React.createElement('div', { key: i, style: s.vit },
             React.createElement('div', { style: Object.assign({}, s.vitVal, v.c === 'abn' ? s.vitAbn : v.c === 'warn' ? s.vitWarn : s.vitOk) }, v.v),
             React.createElement('div', { style: s.vitName }, v.n)
@@ -113,7 +147,7 @@ function CaseRunner() {
     React.createElement('div', { style: s.scenarioBox }, currentStep.sc),
     React.createElement('div', { style: s.optsLabel }, 'What will you do next?'),
     React.createElement('div', { style: s.optsList },
-      currentStep.opts.map(function(o, i) {
+      currentStep.opts?.map(function(o, i) {
         var btnStyle = Object.assign({}, s.optBtn);
         if (answered) {
           if (i === currentStep.correct) btnStyle = Object.assign({}, s.optBtn, s.optCorrect);
@@ -188,5 +222,3 @@ var s = {
 };
 
 export default CaseRunner;
-
-
