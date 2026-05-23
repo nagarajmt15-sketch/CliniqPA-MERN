@@ -14,7 +14,7 @@ const CASES = [
     color: '#ff3333',
     emoji: '❤️',
     tags: ['STEMI', 'ACS', 'Emergency'],
-    unlocksOnDay: 1,
+    unlockOnDay: 1,
     summary: 'Classic STEMI presentation — time-critical management',
     steps: [
       {
@@ -112,7 +112,7 @@ const CASES = [
     color: '#3b82f6',
     emoji: '🫁',
     tags: ['CAP', 'Pneumonia', 'Antibiotic'],
-    unlocksOnDay: 2,
+    unlockOnDay: 2,
     summary: 'Community-acquired pneumonia — diagnosis and severity assessment',
     steps: [
       {
@@ -190,7 +190,7 @@ const CASES = [
     color: '#f59e0b',
     emoji: '🩺',
     tags: ['Appendicitis', 'Alvarado', 'Surgery'],
-    unlocksOnDay: 3,
+    unlockOnDay: 3,
     summary: 'Classic appendicitis — Alvarado scoring and surgical management',
     steps: [
       {
@@ -268,7 +268,7 @@ const CASES = [
     color: '#10b981',
     emoji: '🩸',
     tags: ['DKA', 'Diabetes', 'Electrolytes'],
-    unlocksOnDay: 4,
+    unlockOnDay: 4,
     summary: 'DKA management — fluid, insulin, electrolyte protocol',
     steps: [
       {
@@ -346,7 +346,7 @@ const CASES = [
     color: '#8b5cf6',
     emoji: '🦠',
     tags: ['Sepsis', 'Hour-1 Bundle', 'ICU'],
-    unlocksOnDay: 5,
+    unlockOnDay: 5,
     summary: 'Hour-1 Bundle — recognizing and managing septic shock',
     steps: [
       {
