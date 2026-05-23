@@ -48,7 +48,7 @@ function CaseRunner() {
         React.createElement('p', { style: s.sub }, 'Step-by-step clinical decision making')
       ),
       React.createElement('div', { style: s.grid },
-        CASES.map(function(c) {
+        CASES?.map(function(c) {
           return React.createElement('div', { key: c.id, style: s.card },
             React.createElement('div', { style: Object.assign({}, s.banner, { background: c.color }) }),
             React.createElement('div', { style: s.cardBody },
