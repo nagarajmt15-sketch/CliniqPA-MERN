@@ -47,13 +47,39 @@ function CaseRunner() {
     setShowResult(false);
   }
 
+  // Helper utility function to parse and convert exact answer index safely
+  function getCorrectIndex(currentStep) {
+    // Check all possible key variants from database schema
+    var rawCorrect = currentStep.correct !== undefined ? currentStep.correct : currentStep.correctAnswer;
+    
+    if (rawCorrect === undefined || rawCorrect === null) return 0;
+    
+    // If it's already a clean number, return it
+    if (typeof rawCorrect === 'number') return rawCorrect;
+    
+    // If it's a string letter like "A", "B", "C", "D" -> convert to 0, 1, 2, 3
+    if (typeof rawCorrect === 'string') {
+      var cleanStr = rawCorrect.trim().toUpperCase();
+      if (cleanStr === 'A') return 0;
+      if (cleanStr === 'B') return 1;
+      if (cleanStr === 'C') return 2;
+      if (cleanStr === 'D') return 3;
+      
+      // If it's a string number like "0", "1" -> parse into integer
+      var parsed = parseInt(cleanStr, 10);
+      if (!isNaN(parsed)) return parsed;
+    }
+    
+    return 0; // Absolute fallback
+  }
+
   function pickAnswer(i) {
     if (answered) return;
     setAnswered(true);
     setSelected(i);
     
     var currentStep = activeCase.steps[step];
-    var correctIndex = currentStep.correct !== undefined ? currentStep.correct : currentStep.correctAnswer;
+    var correctIndex = getCorrectIndex(currentStep);
     
     if (i === correctIndex) {
       setCorrect(function(p) { return p + 1; });
@@ -62,7 +88,7 @@ function CaseRunner() {
 
   function nextStep() {
     var currentStep = activeCase.steps[step];
-    var correctIndex = currentStep.correct !== undefined ? currentStep.correct : currentStep.correctAnswer;
+    var correctIndex = getCorrectIndex(currentStep);
 
     if (step + 1 >= activeCase.steps.length) {
       setShowResult(true);
@@ -131,6 +157,7 @@ function CaseRunner() {
 
   // --- RENDERING ROUTE 3: LIVE ACTIVE CASE SYSTEM ---
   var currentStep = activeCase.steps[step];
+  var correctIndex = getCorrectIndex(currentStep);
 
   return React.createElement('div', { style: s.wrap },
     React.createElement('div', { style: s.caseHdr },
@@ -164,14 +191,12 @@ function CaseRunner() {
     React.createElement('div', { style: s.optsList },
       (currentStep.opts || currentStep.options || [])?.map(function(o, i) {
         var btnStyle = { ...s.optBtn };
-        var correctIndex = currentStep.correct !== undefined ? currentStep.correct : currentStep.correctAnswer;
         
         if (answered) {
           if (i === correctIndex) btnStyle = { ...s.optBtn, ...s.optCorrect };
           else if (i === selected) btnStyle = { ...s.optBtn, ...s.optWrong };
         }
 
-        // 💡 [object Object] BUG FIX: Safely parse text from object if necessary
         var displayOptionText = '';
         if (typeof o === 'object' && o !== null) {
           displayOptionText = o.text || o.option || o.optionText || o.title || JSON.stringify(o);
@@ -186,8 +211,8 @@ function CaseRunner() {
     ),
     
     // Explanation Check
-    answered && React.createElement('div', { style: { ...s.fbBox, ...(selected === (currentStep.correct !== undefined ? currentStep.correct : currentStep.correctAnswer) ? s.fbOk : s.fbBad) } },
-      React.createElement('div', { style: s.fbTitle }, selected === (currentStep.correct !== undefined ? currentStep.correct : currentStep.correctAnswer) ? 'Correct!' : 'Not ideal.'),
+    answered && React.createElement('div', { style: { ...s.fbBox, ...(selected === correctIndex ? s.fbOk : s.fbBad) } },
+      React.createElement('div', { style: s.fbTitle }, selected === correctIndex ? 'Correct!' : 'Not ideal.'),
       React.createElement('div', { style: s.fbExp }, currentStep.exp || currentStep.explanation || '')
     ),
     answered && React.createElement('button', { style: s.nextBtn, onClick: nextStep },
